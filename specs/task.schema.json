@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentmesh.dev/specs/draft/task.schema.json",
+  "title": "AgentMesh Task Payload (DRAFT)",
+  "description": "PROPOSED unified JSON payload for task delegation and outcomes in AgentMesh. This is a draft for Phase 1 discussion; nothing here is finalized or implemented.",
+  "x-agentmesh-status": "draft",
+  "x-agentmesh-phase": 1,
+  "type": "object",
+  "required": ["task_id", "conversation_id", "capability", "context"],
+  "properties": {
+    "task_id": {
+      "description": "Unique identifier for this task. Assignment owner (delegator vs. executor) and idempotency rules are open questions.",
+      "type": "string",
+      "minLength": 1
+    },
+    "conversation_id": {
+      "description": "Identifier correlating all tasks that belong to one logical workflow, constant across the workflow.",
+      "type": "string",
+      "minLength": 1
+    },
+    "capability": {
+      "description": "The advertised capability the delegator is invoking (must match a capability in the target agent's manifest).",
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "description": "Structured input the agent needs: instructions, documents, prior results, references. Shape is capability-specific.",
+      "type": "object"
+    },
+    "constraints": {
+      "description": "Optional delegator-declared limits. A receiving agent must honor a constraint or reject the task explicitly.",
+      "type": "object",
+      "properties": {
+        "deadline": {
+          "description": "Absolute UTC deadline after which the task may be timed out (ISO 8601).",
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeout_seconds": {
+          "description": "Relative deadline measured from task acceptance.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "output_format": {
+          "description": "Requested result format, e.g. 'json' or 'markdown'.",
+          "type": "string"
+        },
+        "max_result_bytes": {
+          "description": "Maximum size of the serialized result.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "Current task state. See docs/task-lifecycle.md for the proposed lifecycle.",
+      "type": "string",
+      "enum": ["submitted", "accepted", "rejected", "executing", "completed", "failed", "timed_out"]
+    },
+    "result": {
+      "description": "Structured output produced on successful completion (required when status is 'completed').",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "The capability-specific result payload.",
+          "type": "object"
+        },
+        "summary": {
+          "description": "Optional short human-readable summary of the result.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "error": {
+      "description": "Structured error information on failure (required when status is 'rejected', 'failed' or 'timed_out').",
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "description": "Machine-readable error code. Exact taxonomy is an open Phase 1 question.",
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "description": "Human-readable explanation of the error.",
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "description": "Whether the delegator should consider re-submitting this task.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "usage": {
+      "description": "Optional, informational execution metadata for observability and cost accounting.",
+      "type": "object",
+      "properties": {
+        "model": { "type": "string" },
+        "provider": { "type": "string" },
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "duration_ms": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Conditional requirement (status 'completed' => result present) is expressed informally here; formal oneOf/if-then constraints are a candidate for the finalized Phase 1 schema."
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentmesh.dev/specs/draft/manifest.schema.json",
+  "title": "AgentMesh Agent Manifest (DRAFT)",
+  "description": "PROPOSED schema describing an AgentMesh agent's identity, capabilities, and endpoints. This is a draft for Phase 1 discussion; nothing here is finalized or implemented.",
+  "x-agentmesh-status": "draft",
+  "x-agentmesh-phase": 1,
+  "type": "object",
+  "required": ["agent_id", "name", "version", "capabilities", "endpoints"],
+  "properties": {
+    "agent_id": {
+      "description": "Stable, unique identifier for the agent within a mesh. Format intentionally left open (e.g., a URN or URL) pending mesh-scoping decisions.",
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "description": "Human-readable agent name, e.g. 'researcher' or 'writer'.",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "Optional human-readable summary of what the agent does.",
+      "type": "string"
+    },
+    "version": {
+      "description": "The agent's own release version (semver string recommended).",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+    },
+    "capabilities": {
+      "description": "The kinds of tasks this agent can accept. Capability matching semantics are an open design question.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["capability_id"],
+        "properties": {
+          "capability_id": {
+            "description": "Machine-readable capability identifier, e.g. 'web-research' or 'document-writing'.",
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "description": "Optional human-readable description of this capability.",
+            "type": "string"
+          },
+          "input_hint": {
+            "description": "Optional hint describing the context shape the agent expects. Whether this should reference a JSON Schema is an open question.",
+            "type": "string"
+          },
+          "output_hint": {
+            "description": "Optional hint describing the result shape the agent produces.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "endpoints": {
+      "description": "Where callers should interact with this agent.",
+      "type": "object",
+      "required": ["base_url"],
+      "properties": {
+        "base_url": {
+          "description": "Root URL of the agent's API.",
+          "type": "string",
+          "format": "uri"
+        },
+        "manifest": {
+          "description": "Full URL of the manifest endpoint. Defaults to base_url + /manifest.",
+          "type": "string",
+          "format": "uri"
+        },
+        "tasks": {
+          "description": "Full URL for task submission. Exact path is a Phase 2 decision.",
+          "type": "string",
+          "format": "uri"
+        },
+        "webhook_callback": {
+          "description": "Optional URL where asynchronous task notifications should be delivered (Phase 4).",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "description": "Optional extension point for vendor or deployment metadata. Consumers must ignore unknown entries.",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}
