@@ -1,2 +1,1 @@
-pytest>=8.0
-jsonschema>=4.21
+-e .[dev]

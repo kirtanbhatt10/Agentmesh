@@ -1,11 +1,24 @@
 # examples/
 
-This directory will contain **runnable examples** of AgentMesh-based agents and workflows — for instance, the Phase 3 MVP (Orchestrator, Researcher, Writer) demonstrating delegation from a user request to a final report.
+## Payloads
 
-> ⚠️ **Status:** There are no examples yet. AgentMesh is in early design ([Phase 0](../docs/roadmap.md)); runnable examples are planned from Phase 2 onward and are explicitly **not implemented** today.
+[`payloads/`](payloads) holds example AgentMesh messages that validate against the draft schemas in [`specs/`](../specs/README.md):
 
-Expected future contents (proposal):
+- `researcher.manifest.json`, `writer.manifest.json` — agent manifests.
+- `research.task.submitted.json` → `research.task.completed.json` — one task at submission and on completion.
+- `writing.task.failed.json` — a failed task with a structured, retryable error.
 
-- A minimal agent example exposing a manifest and one task endpoint.
+Check them with the CLI:
+
+```bash
+agentmesh validate manifest examples/payloads/*.manifest.json
+agentmesh validate task examples/payloads/*.task.*.json
+```
+
+## Planned
+
+Runnable agents arrive from Phase 2 onward ([roadmap](../docs/roadmap.md)) and are **not implemented** today:
+
+- A minimal agent exposing a manifest and one task endpoint.
 - The three-agent MVP demo (Orchestrator → Researcher → Writer).
 - Per-example setup instructions that work without hard-coded credentials.

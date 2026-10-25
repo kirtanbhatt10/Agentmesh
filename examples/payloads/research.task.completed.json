@@ -1,0 +1,25 @@
+{
+  "task_id": "task-0001",
+  "conversation_id": "conv-42",
+  "capability": "web-research",
+  "context": {
+    "query": "open protocols for agent-to-agent communication",
+    "max_sources": 5
+  },
+  "status": "completed",
+  "result": {
+    "data": {
+      "findings": [
+        { "claim": "Example finding.", "source": "https://example.org/article" }
+      ]
+    },
+    "summary": "One relevant source found."
+  },
+  "usage": {
+    "model": "example-model",
+    "provider": "ollama",
+    "prompt_tokens": 812,
+    "completion_tokens": 240,
+    "duration_ms": 5310
+  }
+}

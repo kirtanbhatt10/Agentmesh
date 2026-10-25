@@ -1,0 +1,16 @@
+{
+  "agent_id": "urn:agentmesh:example:writer",
+  "name": "writer",
+  "description": "Turns research findings into a written report.",
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "capability_id": "document-writing",
+      "description": "Write a structured report from supplied findings.",
+      "output_hint": "markdown"
+    }
+  ],
+  "endpoints": {
+    "base_url": "http://localhost:8002"
+  }
+}

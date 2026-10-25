@@ -1,0 +1,22 @@
+name: Protocol proposal
+description: Suggest a change or addition to the AgentMesh protocol
+labels: [proposal]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: The scenario the current protocol does not handle well.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should change in the spec or schemas, with an example payload if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -1,0 +1,14 @@
+{
+  "task_id": "task-0002",
+  "conversation_id": "conv-42",
+  "capability": "document-writing",
+  "context": {
+    "findings_ref": "task-0001"
+  },
+  "status": "failed",
+  "error": {
+    "code": "upstream_unavailable",
+    "message": "The model provider did not respond before the timeout.",
+    "retryable": true
+  }
+}

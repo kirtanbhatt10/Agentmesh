@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentmesh"
+version = "0.1.0"
+description = "Reference schemas and validators for AgentMesh, an open protocol for peer-to-peer AI agent communication."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Kirtan Bhatt", email = "kirtan11bhatt@gmail.com" }]
+keywords = ["agents", "ai", "a2a", "protocol", "json-schema", "multi-agent"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+dependencies = ["jsonschema>=4.21"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6", "build>=1.2", "twine>=5.0"]
+
+[project.scripts]
+agentmesh = "agentmesh.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kirtanbhatt10/Agentmesh"
+Repository = "https://github.com/kirtanbhatt10/Agentmesh"
+Issues = "https://github.com/kirtanbhatt10/Agentmesh/issues"
+Changelog = "https://github.com/kirtanbhatt10/Agentmesh/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentmesh"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"specs/manifest.schema.json" = "agentmesh/schemas/manifest.schema.json"
+"specs/task.schema.json" = "agentmesh/schemas/task.schema.json"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "specs/", "tests/", "examples/", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

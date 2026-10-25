@@ -109,5 +109,16 @@
     }
   },
   "additionalProperties": false,
-  "$comment": "Conditional requirement (status 'completed' => result present) is expressed informally here; formal oneOf/if-then constraints are a candidate for the finalized Phase 1 schema."
+  "allOf": [
+    {
+      "$comment": "A completed task must carry a result.",
+      "if": { "properties": { "status": { "const": "completed" } }, "required": ["status"] },
+      "then": { "required": ["result"] }
+    },
+    {
+      "$comment": "A rejected, failed or timed-out task must carry an error.",
+      "if": { "properties": { "status": { "enum": ["rejected", "failed", "timed_out"] } }, "required": ["status"] },
+      "then": { "required": ["error"] }
+    }
+  ]
 }

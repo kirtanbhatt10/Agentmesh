@@ -14,7 +14,8 @@
 
 - ✅ **Initial draft schemas published:** [`specs/manifest.schema.json`](../specs/manifest.schema.json) and [`specs/task.schema.json`](../specs/task.schema.json) (marked as drafts; open questions still to resolve).
 - ⬜ Finalize the manifest, task, result, and error schemas; resolve open design questions from [protocol-overview.md](protocol-overview.md) and [task-lifecycle.md](task-lifecycle.md) (task ID assignment, retry semantics, error taxonomy).
-- ⬜ Formalize conditional constraints (e.g., `completed` ⇒ result present) in the schemas.
+- ✅ Formalize conditional constraints in the task schema (`completed` ⇒ `result`; `rejected`/`failed`/`timed_out` ⇒ `error`).
+- ✅ `agentmesh` Python package (v0.1.0) with a validation API, CLI and example payloads.
 - **Outcome:** a specification others can review and implement against.
 
 ## Phase 2 — Minimal agent API and manifest discovery *(planned)*

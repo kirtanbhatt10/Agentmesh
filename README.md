@@ -8,14 +8,41 @@
   <img alt="Status: early design" src="https://img.shields.io/badge/status-early%20design-orange.svg">
   <img alt="Spec: draft" src="https://img.shields.io/badge/spec-draft%20v0.1-yellow.svg">
   <img alt="JSON Schema 2020-12" src="https://img.shields.io/badge/JSON%20Schema-2020--12-lightgrey.svg">
-  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776AB.svg">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-3776AB.svg">
+  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-informational.svg">
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
   <a href="https://github.com/kirtanbhatt10/Agentmesh/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/kirtanbhatt10/Agentmesh"></a>
 </p>
 
 ---
 
-> ⚠️ **Status: Early design and repository scaffolding.** AgentMesh is currently a proposal. The specification, examples, and agents described in this repository are **planned, not yet implemented**. Nothing here is tested, production-ready, or supported.
+> ⚠️ **Status: early design (v0.1.0).** The protocol schemas are drafts and may change. What exists today is the draft specification plus a Python package that validates manifests and task payloads against it. The agents, registry and transport described below are **planned, not yet implemented**.
+
+## Quick start
+
+```bash
+pip install git+https://github.com/kirtanbhatt10/Agentmesh.git
+```
+
+Validate payloads from the command line:
+
+```bash
+agentmesh validate manifest examples/payloads/researcher.manifest.json
+agentmesh validate task examples/payloads/*.task.*.json
+agentmesh schema task          # print the task schema
+```
+
+Or from Python:
+
+```python
+from agentmesh import validate_task
+
+task = {"task_id": "t-1", "conversation_id": "c-1", "capability": "web-research", "context": {}}
+for e in validate_task({**task, "status": "completed"}):
+    print(e)  # $: 'result' is a required property
+```
+
+Each error carries a JSON path (`e.path`) and a message (`e.message`); an empty list means the payload is valid. Example manifests and tasks live in [`examples/payloads/`](examples/payloads).
 
 ## What is AgentMesh?
 
@@ -125,10 +152,21 @@ agentmesh/
 ├── .gitignore
 ├── .editorconfig
 ├── .env.example
+├── CHANGELOG.md
+├── pyproject.toml
 ├── requirements-dev.txt
 ├── .github/
-│   └── workflows/
-│       └── tests.yml
+│   ├── workflows/
+│   │   ├── tests.yml
+│   │   └── release.yml
+│   ├── ISSUE_TEMPLATE/
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── dependabot.yml
+├── src/
+│   └── agentmesh/
+│       ├── __init__.py
+│       ├── validation.py
+│       └── cli.py
 ├── docs/
 │   ├── architecture.md
 │   ├── protocol-overview.md
@@ -140,12 +178,17 @@ agentmesh/
 │   ├── manifest.schema.json
 │   └── task.schema.json
 ├── examples/
-│   └── README.md
+│   ├── README.md
+│   └── payloads/
+│       ├── researcher.manifest.json
+│       ├── writer.manifest.json
+│       └── *.task.*.json
 ├── agents/
 │   └── README.md
 ├── tests/
 │   ├── README.md
-│   └── test_schemas.py
+│   ├── test_schemas.py
+│   └── test_package.py
 └── scripts/
     └── README.md
 ```
@@ -154,7 +197,8 @@ agentmesh/
 
 - ✅ Repository scaffolding and architecture documentation.
 - ✅ Draft JSON Schemas for agent manifests and task payloads ([`specs/`](specs/README.md)).
-- ✅ Schema conformance tests running in CI on every push and pull request.
+- ✅ Conditional rules in the task schema (`completed` ⇒ `result`; `rejected`/`failed`/`timed_out` ⇒ `error`).
+- ✅ `agentmesh` Python package with a validation API and CLI, example payloads, and tests on Python 3.10–3.13 in CI.
 - 🚧 Reference agents, registry, and Redis-backed task tracking: **proposed, not implemented**.
 
 ## Roadmap
@@ -176,7 +220,7 @@ The work still needed to turn the draft into a usable protocol:
 **Specification (Phase 1)**
 - [ ] Decide who assigns `task_id` (delegator or executor) and define idempotency rules.
 - [ ] Define retry semantics and a stable error-code taxonomy.
-- [ ] Encode conditional rules in the schemas (e.g. `completed` ⇒ `result`, `failed` ⇒ `error`).
+- [x] Encode conditional rules in the schemas (`completed` ⇒ `result`, `failed` ⇒ `error`).
 - [ ] Settle capability matching and manifest versioning.
 
 **Reference implementation (Phases 2–4)**
@@ -190,19 +234,30 @@ The work still needed to turn the draft into a usable protocol:
 - [ ] Structured logging, tracing, and usage reporting.
 - [ ] Integration tests for the reference agents and a security review.
 - [ ] Interoperability tests with agents in other languages, plus quickstarts and versioned spec releases.
+- [ ] Publish the package to PyPI (the release workflow is ready; see [Releasing](#releasing)).
 
 ## Contributing and development setup
-
-Only the schema test suite runs today; agent setup instructions will be added once the Python/FastAPI reference implementation lands in Phase 2.
 
 ```bash
 git clone https://github.com/kirtanbhatt10/Agentmesh.git
 cd Agentmesh
-pip install -r requirements-dev.txt
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 pytest -v
+ruff check . && ruff format --check .
 ```
 
+Agent setup instructions will be added once the Python/FastAPI reference implementation lands in Phase 2.
+
 Contributions to the **specification and documentation are warmly welcomed now** — please read [CONTRIBUTING.md](CONTRIBUTING.md). Please also note our [Code of Conduct](CODE_OF_CONDUCT.md) and the process described in [SECURITY.md](SECURITY.md).
+
+## Releasing
+
+1. Update the version in `pyproject.toml` and `src/agentmesh/__init__.py`, and move the "Unreleased" notes in [CHANGELOG.md](CHANGELOG.md) under the new version.
+2. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+3. The [release workflow](.github/workflows/release.yml) builds the package, publishes it to PyPI and creates a GitHub release.
+
+One-time setup before the first release: on [pypi.org](https://pypi.org/manage/account/publishing/), add a *pending trusted publisher* for repository `kirtanbhatt10/Agentmesh`, workflow `release.yml`, environment `pypi`. No API token is needed.
 
 ## Maintainer
 
@@ -210,4 +265,4 @@ Maintained by [@kirtanbhatt10](https://github.com/kirtanbhatt10).
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE). The copyright holder and year in the license file are placeholders pending confirmation.
+This project is licensed under the MIT License — see [LICENSE](LICENSE).

@@ -1,0 +1,14 @@
+{
+  "task_id": "task-0001",
+  "conversation_id": "conv-42",
+  "capability": "web-research",
+  "context": {
+    "query": "open protocols for agent-to-agent communication",
+    "max_sources": 5
+  },
+  "constraints": {
+    "deadline": "2026-11-01T12:00:00Z",
+    "output_format": "json"
+  },
+  "status": "submitted"
+}

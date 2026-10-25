@@ -1,6 +1,6 @@
 # Contributing to AgentMesh
 
-First off, thank you for considering contributing. AgentMesh is in its **early design and scaffolding phase**: the most valuable contributions right now are to the **specification, documentation, and design discussions**, not to implementation (which has not started yet).
+First off, thank you for considering contributing. AgentMesh is in its **early design phase**: the most valuable contributions right now are to the **specification, schemas, documentation, and design discussions**. The `agentmesh` Python package (validation API and CLI) is also open for improvements; the agent reference implementation has not started yet.
 
 ## Where contributions help most today
 
@@ -18,16 +18,17 @@ First off, thank you for considering contributing. AgentMesh is in its **early d
 
 ## Pull requests
 
-1. Fork the repository and create a branch from `master` with a short, descriptive name (e.g., `docs/task-lifecycle-timeouts`).
+1. Fork the repository and create a branch from `main` with a short, descriptive name (e.g., `docs/task-lifecycle-timeouts`).
 2. Keep changes focused: one topic per pull request.
 3. Reference the related issue (e.g., `Fixes #12`).
 4. Update any documentation affected by your change; documentation and specification changes should stay consistent with each other.
-5. Once tests and CI exist (planned for later phases), ensure they pass before requesting review.
+5. Make sure `pytest`, `ruff check .` and `ruff format --check .` pass; CI runs them on every pull request.
+6. Add a line to the "Unreleased" section of [CHANGELOG.md](CHANGELOG.md) for user-visible changes.
 
 ## Coding standards
 
 - **Documentation:** clear, concise Markdown; GitHub-compatible syntax; define terminology on first use. Use consistent terms: *AgentMesh*, *Orchestrator*, *Researcher*, *Writer*, *manifest*, *registry*, *task*, *conversation*.
-- **Code (future):** the planned reference implementation is Python (FastAPI). When implementation begins, we will adopt linting/formatting standards (e.g., formatters and linters configured in-repo) and document them here.
+- **Code:** Python 3.10+, formatted and linted with [Ruff](https://docs.astral.sh/ruff/) (settings in `pyproject.toml`). Set up with `pip install -e ".[dev]"`. The planned agent reference implementation will use FastAPI.
 - **Proposals over claims:** label anything unimplemented as *proposed* or *draft*. Do not describe features as working, tested, or production-ready.
 
 ## Commit messages

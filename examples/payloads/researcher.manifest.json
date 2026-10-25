@@ -1,0 +1,19 @@
+{
+  "agent_id": "urn:agentmesh:example:researcher",
+  "name": "researcher",
+  "description": "Finds and summarizes sources on a topic.",
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "capability_id": "web-research",
+      "description": "Search the web and return key findings with sources.",
+      "input_hint": "{ \"query\": string, \"max_sources\": integer }",
+      "output_hint": "{ \"findings\": [ { \"claim\": string, \"source\": url } ] }"
+    }
+  ],
+  "endpoints": {
+    "base_url": "http://localhost:8001",
+    "manifest": "http://localhost:8001/manifest",
+    "tasks": "http://localhost:8001/tasks"
+  }
+}

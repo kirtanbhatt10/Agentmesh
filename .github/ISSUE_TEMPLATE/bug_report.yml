@@ -1,0 +1,22 @@
+name: Bug report
+description: Something in the schemas, package or docs is wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: payload
+    attributes:
+      label: Payload or command
+      description: The JSON payload or `agentmesh` command that shows the problem.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: agentmesh version
+      description: Output of `agentmesh --version`.
