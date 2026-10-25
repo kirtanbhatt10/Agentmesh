@@ -2,6 +2,17 @@
 
 **A model-agnostic, language-agnostic communication protocol for independent AI agents.**
 
+<p align="center">
+  <a href="https://github.com/kirtanbhatt10/Agentmesh/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/kirtanbhatt10/Agentmesh/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt="Status: early design" src="https://img.shields.io/badge/status-early%20design-orange.svg">
+  <img alt="Spec: draft" src="https://img.shields.io/badge/spec-draft%20v0.1-yellow.svg">
+  <img alt="JSON Schema 2020-12" src="https://img.shields.io/badge/JSON%20Schema-2020--12-lightgrey.svg">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776AB.svg">
+  <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
+  <a href="https://github.com/kirtanbhatt10/Agentmesh/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/kirtanbhatt10/Agentmesh"></a>
+</p>
+
 ---
 
 > ⚠️ **Status: Early design and repository scaffolding.** AgentMesh is currently a proposal. The specification, examples, and agents described in this repository are **planned, not yet implemented**. Nothing here is tested, production-ready, or supported.
@@ -114,6 +125,10 @@ agentmesh/
 ├── .gitignore
 ├── .editorconfig
 ├── .env.example
+├── requirements-dev.txt
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 ├── docs/
 │   ├── architecture.md
 │   ├── protocol-overview.md
@@ -129,15 +144,18 @@ agentmesh/
 ├── agents/
 │   └── README.md
 ├── tests/
-│   └── README.md
+│   ├── README.md
+│   └── test_schemas.py
 └── scripts/
     └── README.md
 ```
 
 ## Current status
 
-- ✅ Repository scaffolding and architecture documentation (this repository today).
-- 🚧 Protocol specification, JSON schema, reference agents, registry, and Redis-backed task tracking: **proposed, not implemented**.
+- ✅ Repository scaffolding and architecture documentation.
+- ✅ Draft JSON Schemas for agent manifests and task payloads ([`specs/`](specs/README.md)).
+- ✅ Schema conformance tests running in CI on every push and pull request.
+- 🚧 Reference agents, registry, and Redis-backed task tracking: **proposed, not implemented**.
 
 ## Roadmap
 
@@ -151,11 +169,44 @@ The high-level plan; details in [docs/roadmap.md](docs/roadmap.md):
 - **Phase 5** — Authentication, authorization, observability, testing, and security hardening.
 - **Phase 6** — Multi-agent interoperability and external developer adoption.
 
+## Future work
+
+The work still needed to turn the draft into a usable protocol:
+
+**Specification (Phase 1)**
+- [ ] Decide who assigns `task_id` (delegator or executor) and define idempotency rules.
+- [ ] Define retry semantics and a stable error-code taxonomy.
+- [ ] Encode conditional rules in the schemas (e.g. `completed` ⇒ `result`, `failed` ⇒ `error`).
+- [ ] Settle capability matching and manifest versioning.
+
+**Reference implementation (Phases 2–4)**
+- [ ] Minimal FastAPI agent exposing `/manifest` and a task endpoint.
+- [ ] Registry service that indexes manifests and answers capability queries.
+- [ ] Orchestrator, Researcher and Writer agents with an end-to-end demo.
+- [ ] Redis-backed task state, webhooks/polling, and timeout handling.
+
+**Hardening and adoption (Phases 5–6)**
+- [ ] Agent-to-agent authentication and authorization.
+- [ ] Structured logging, tracing, and usage reporting.
+- [ ] Integration tests for the reference agents and a security review.
+- [ ] Interoperability tests with agents in other languages, plus quickstarts and versioned spec releases.
+
 ## Contributing and development setup
 
-Development setup is not yet defined because the Python/FastAPI implementation has not been started. Once the reference implementation lands in Phase 2, setup instructions (virtual environment, dependencies, running a demo agent locally) will be added here and in the contributing guide.
+Only the schema test suite runs today; agent setup instructions will be added once the Python/FastAPI reference implementation lands in Phase 2.
+
+```bash
+git clone https://github.com/kirtanbhatt10/Agentmesh.git
+cd Agentmesh
+pip install -r requirements-dev.txt
+pytest -v
+```
 
 Contributions to the **specification and documentation are warmly welcomed now** — please read [CONTRIBUTING.md](CONTRIBUTING.md). Please also note our [Code of Conduct](CODE_OF_CONDUCT.md) and the process described in [SECURITY.md](SECURITY.md).
+
+## Maintainer
+
+Maintained by [@kirtanbhatt10](https://github.com/kirtanbhatt10).
 
 ## License
 
