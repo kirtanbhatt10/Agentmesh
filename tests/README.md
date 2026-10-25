@@ -2,7 +2,14 @@
 
 This directory will contain the **test suite** for AgentMesh — protocol conformance tests, agent behavior tests, and integration tests for the reference implementations.
 
-> ⚠️ **Status:** There are no tests yet, because there is no implementation to test. AgentMesh is in early design ([Phase 0](../docs/roadmap.md)). A test suite and CI are planned for Phase 5 ("testing and security hardening"), per the [roadmap](../docs/roadmap.md).
+> **Status:** The first tests check the draft JSON Schemas in [`specs/`](../specs/README.md): each schema is valid JSON Schema 2020-12, accepts a valid example payload and rejects invalid ones. They run on every push and pull request through GitHub Actions (`.github/workflows/tests.yml`).
+
+## Running the tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
 
 Expected future contents (proposal):
 
