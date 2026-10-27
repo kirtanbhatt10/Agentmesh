@@ -1,4 +1,4 @@
-# AgentMesh
+# AgentMesh #
 
 **A model-agnostic, language-agnostic communication protocol for independent AI agents.**
 
