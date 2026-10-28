@@ -1,0 +1,57 @@
+# Registry plus the demo Orchestrator, Researcher and Writer, each in its own container.
+#   docker compose up --build --wait
+#   agentmesh find http://127.0.0.1:8500
+#   agentmesh submit http://127.0.0.1:8503 task.json --wait   # capability "report"
+# The demo agents are offline stubs; replace their handlers with real model calls.
+
+x-agentmesh: &agentmesh
+  build: .
+  image: agentmesh:local
+  restart: unless-stopped
+
+x-healthcheck: &healthcheck
+  interval: 2s
+  timeout: 3s
+  retries: 15
+
+services:
+  registry:
+    <<: *agentmesh
+    command: ["agentmesh", "registry", "--host", "0.0.0.0", "--port", "8500"]
+    ports: ["127.0.0.1:8500:8500"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8500/healthz', timeout=2)"]
+
+  researcher:
+    <<: *agentmesh
+    command: ["agentmesh", "demo-agent", "researcher", "--registry", "http://registry:8500",
+              "--host", "0.0.0.0", "--port", "8501", "--public-url", "http://researcher:8501"]
+    ports: ["127.0.0.1:8501:8501"]
+    depends_on:
+      registry: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8501/healthz', timeout=2)"]
+
+  writer:
+    <<: *agentmesh
+    command: ["agentmesh", "demo-agent", "writer", "--registry", "http://registry:8500",
+              "--host", "0.0.0.0", "--port", "8502", "--public-url", "http://writer:8502"]
+    ports: ["127.0.0.1:8502:8502"]
+    depends_on:
+      registry: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8502/healthz', timeout=2)"]
+
+  orchestrator:
+    <<: *agentmesh
+    command: ["agentmesh", "demo-agent", "orchestrator", "--registry", "http://registry:8500",
+              "--host", "0.0.0.0", "--port", "8503", "--public-url", "http://orchestrator:8503"]
+    ports: ["127.0.0.1:8503:8503"]
+    depends_on:
+      registry: { condition: service_healthy }
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8503/healthz', timeout=2)"]

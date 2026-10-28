@@ -1,98 +1,157 @@
-# AgentMesh #
+# AgentMesh
 
-**A model-agnostic, language-agnostic communication protocol for independent AI agents.**
+**An open protocol for peer-to-peer AI agent communication: capability discovery, task delegation and asynchronous collaboration between independent agents, with a dependency-light Python reference implementation.**
 
 <p align="center">
   <a href="https://github.com/kirtanbhatt10/Agentmesh/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/kirtanbhatt10/Agentmesh/actions/workflows/tests.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <img alt="Status: early design" src="https://img.shields.io/badge/status-early%20design-orange.svg">
-  <img alt="Spec: draft" src="https://img.shields.io/badge/spec-draft%20v0.1-yellow.svg">
+  <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-orange.svg">
+  <img alt="Spec: draft" src="https://img.shields.io/badge/spec-draft-yellow.svg">
   <img alt="JSON Schema 2020-12" src="https://img.shields.io/badge/JSON%20Schema-2020--12-lightgrey.svg">
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-3776AB.svg">
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-informational.svg">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-informational.svg">
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
   <a href="https://github.com/kirtanbhatt10/Agentmesh/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/kirtanbhatt10/Agentmesh"></a>
 </p>
 
 ---
 
-> ⚠️ **Status: early design (v0.1.0).** The protocol schemas are drafts and may change. What exists today is the draft specification plus a Python package that validates manifests and task payloads against it. The agents, registry and transport described below are **planned, not yet implemented**.
+AgentMesh lets independently deployed AI agents **publish what they can do, find each other, hand work to each other as peers and track that work to a result** — whatever model, framework or language each agent uses. Agents describe themselves with a JSON **manifest**, a **registry** indexes those manifests by capability, and work moves as **tasks** with a shared lifecycle (`submitted → accepted → executing → completed / failed / timed_out`, or `rejected`).
+
+The `agentmesh` package gives you the draft protocol schemas and validators plus a working reference stack — agent server, registry, clients, CLI and a three-agent demo — that needs nothing beyond the Python standard library and `jsonschema`.
+
+> ⚠️ **Status: alpha (v0.2.0).** The protocol schemas are **drafts** and may change. The reference services are for development, demos and trusted networks: they have **no authentication or TLS yet** and keep state in memory. See [SECURITY.md](SECURITY.md) and the [roadmap](docs/roadmap.md).
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Build an agent](#build-an-agent)
+- [Command-line tool](#command-line-tool)
+- [Run with Docker](#run-with-docker)
+- [How it works](#how-it-works)
+- [How AgentMesh differs from MCP](#how-agentmesh-differs-from-mcp-and-clientserver-tool-architectures)
+- [Project status and roadmap](#project-status)
+- [Development](#development)
 
 ## Quick start
 
 ```bash
 pip install git+https://github.com/kirtanbhatt10/Agentmesh.git
+agentmesh demo "How do agents discover each other?"
 ```
 
-Validate payloads from the command line:
+`agentmesh demo` starts a registry and three agents — an **Orchestrator**, a **Researcher** and a **Writer** — on free local ports. The Orchestrator looks the other two up in the registry by capability, delegates a research task and then a writing task over HTTP (sharing one `conversation_id`), and returns the assembled report:
 
-```bash
-agentmesh validate manifest examples/payloads/researcher.manifest.json
-agentmesh validate task examples/payloads/*.task.*.json
-agentmesh schema task          # print the task schema
+```text
+registry      http://127.0.0.1:41613
+researcher    http://127.0.0.1:39221  (research)
+writer        http://127.0.0.1:44107  (document-writing)
+orchestrator  http://127.0.0.1:35089  (report)
+conversation  conv-6f0c...
+
+  research          -> urn:agentmesh:researcher  [completed]
+  document-writing  -> urn:agentmesh:writer  [completed]
+
+# How do agents discover each other?
+...
 ```
 
-Or from Python:
+The demo agents are deterministic and offline (no LLM or API key): the Researcher searches a small set of built-in notes about AgentMesh and the Writer formats them as Markdown. Swap their handlers for model calls to make them real.
+
+## Build an agent
+
+```python
+from agentmesh import Agent, AgentClient, TaskFailure
+
+agent = Agent("text-stats", version="1.0.0", description="Counts words.")
+
+
+@agent.capability("text-statistics", input_hint='{ "text": string }')
+def text_statistics(context, info):
+    text = context.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise TaskFailure("invalid_context", "context.text must be a non-empty string")
+    return {"words": len(text.split())}
+
+
+with agent.serve(port=8001) as server:  # GET /manifest, POST /tasks, GET /tasks/{id}
+    client = AgentClient(server.url)
+    task = client.delegate("text-statistics", {"text": "agents talk to agents"})
+    print(task["status"], task["result"]["data"])  # completed {'words': 4}
+```
+
+What the reference agent handles for you:
+
+- **Manifest** generated from your capabilities and validated against the schema.
+- **Asynchronous execution** on a worker pool; callers poll `GET /tasks/{task_id}` (`AgentClient.delegate()` does this for you).
+- **Explicit rejection** of unknown capabilities, unsupported `output_format` and invalid or past deadlines.
+- **Deadlines** from `deadline` / `timeout_seconds`, **retries** of `TaskFailure(..., retryable=True)` within `max_retries`, and **`max_result_bytes`**.
+- **Structured errors** for anything that goes wrong, never a stack trace on the wire.
+- **Idempotent** re-submission of the same task; `409` for a reused `task_id` with a different payload.
+- **Registry membership** with `agent.serve(registry_url=...)`: register on start, heartbeat, unregister on shutdown.
+
+A complete, runnable version is in [`examples/custom_agent.py`](examples/custom_agent.py). The HTTP binding, status codes and error codes are documented in [docs/http-api.md](docs/http-api.md).
+
+### Validate payloads
 
 ```python
 from agentmesh import validate_task
 
-task = {"task_id": "t-1", "conversation_id": "c-1", "capability": "web-research", "context": {}}
+task = {"task_id": "t-1", "conversation_id": "c-1", "capability": "research", "context": {}}
 for e in validate_task({**task, "status": "completed"}):
     print(e)  # $: 'result' is a required property
 ```
 
-Each error carries a JSON path (`e.path`) and a message (`e.message`); an empty list means the payload is valid. Example manifests and tasks live in [`examples/payloads/`](examples/payloads).
+Each error carries a JSON path (`e.path`) and a message (`e.message`); an empty list means the payload is valid.
 
-## What is AgentMesh?
+## Command-line tool
 
-AgentMesh is a proposed **Agent-to-Agent (A2A) communication protocol** that lets independently deployed AI agents:
+| Command | What it does |
+| --- | --- |
+| `agentmesh demo [TOPIC] [--json]` | Run the Orchestrator → Researcher → Writer demo locally. |
+| `agentmesh registry [--host H] [--port 8500]` | Serve a registry. |
+| `agentmesh demo-agent {researcher,writer,orchestrator} --registry URL [--port P]` | Serve one demo agent and register it. |
+| `agentmesh discover AGENT_URL` | Fetch and validate an agent's manifest. |
+| `agentmesh find REGISTRY_URL [--capability ID] [--json]` | List registered agents. |
+| `agentmesh submit AGENT_URL FILE [--wait] [--timeout S]` | Submit a task payload, optionally waiting for the outcome. |
+| `agentmesh validate {manifest,task} FILE...` | Validate JSON files against the schemas (`-` reads stdin). |
+| `agentmesh schema {manifest,task}` | Print a JSON Schema. |
 
-- **Discover capabilities** of other agents through manifests and registries.
-- **Delegate tasks** to each other as peers.
-- **Exchange structured context** using a unified payload schema.
-- **Coordinate asynchronous workflows** across network APIs.
+Run the demo as four separate processes, the way real agents would be deployed:
 
-### The problem it aims to solve
+```bash
+agentmesh registry --port 8500 &
+agentmesh demo-agent researcher   --registry http://127.0.0.1:8500 --port 8501 &
+agentmesh demo-agent writer       --registry http://127.0.0.1:8500 --port 8502 &
+agentmesh demo-agent orchestrator --registry http://127.0.0.1:8500 --port 8503 &
+agentmesh find http://127.0.0.1:8500
+echo '{"task_id": "r-1", "conversation_id": "c-1", "capability": "report", "context": {"topic": "task lifecycle"}}' > task.json
+agentmesh submit http://127.0.0.1:8503 task.json --wait
+```
 
-Today, integrating an AI agent (or any LLM-powered service) into a workflow typically means building one-off, application-centric integrations: each agent speaks its own API dialect, state is coupled to each implementation, and composing multi-agent workflows requires custom glue code for every pair of agents. There is no shared, standardized way for independent agents to describe what they can do, hand work to each other, and track a task from submission to result.
+[`scripts/demo-cluster.sh`](scripts/demo-cluster.sh) does all of that and cleans up afterwards: `bash scripts/demo-cluster.sh "your topic"`.
 
-AgentMesh aims to establish a standardized communication layer **between agents**, rather than between an agent and its tools. The goal is a common vocabulary for discovery, delegation, and task lifecycle so that agents built with different frameworks, models, and languages can interoperate.
+## Run with Docker
 
-## Vision and objectives
+```bash
+docker build -t agentmesh:local .
+docker run --rm agentmesh:local agentmesh demo           # self-contained demo
+docker compose up --build --wait                         # registry + 3 agents on 127.0.0.1:8500-8503
+agentmesh find http://127.0.0.1:8500
+docker compose down
+```
 
-- **Model-agnostic:** the protocol does not depend on any particular LLM provider or model.
-- **Language-agnostic:** the protocol is expressed over network APIs, so any language can participate; reference documentation and initial implementation direction may favor particular stacks (see below) without making that part of the contract.
-- **Composable:** multi-agent workflows (e.g., an orchestrator chaining specialist agents) should be describable in terms of the protocol itself.
-- **Asynchronous by default:** real agent work is long-running; the protocol is designed around task delegation, timeouts, and eventual results rather than synchronous request/response blocking.
-- **Separate protocol from implementation:** the specification lives in `specs/`, while concrete agents and servers live in `agents/` and `examples/`.
+The image runs as a non-root user and stops cleanly on `docker stop` (agents unregister themselves).
 
-## Design principles
+## How it works
 
-1. **Simple payloads.** A single, unified JSON schema for tasks, context, results, and errors.
-2. **Explicit discovery.** Agents are found via self-describing manifests (served by the agent itself) and optional registries.
-3. **Asynchronous coordination.** Tasks are delegated with IDs and correlation IDs; callers poll or receive webhooks for progress.
-4. **Honest scoping.** The protocol describes what is proposed; it does not claim security, decentralization, or production readiness that has not been built and reviewed.
+### Core concepts
 
-## How AgentMesh differs from MCP and client–server tool architectures
+1. **Unified JSON payload schema.** Tasks, conversations, results, errors and usage metadata share one draft schema ([`specs/task.schema.json`](specs/task.schema.json)) so agents can be mixed and matched.
+2. **Discovery through manifests and registries.** Each agent serves `GET /manifest` ([`specs/manifest.schema.json`](specs/manifest.schema.json)); a registry indexes manifests so an Orchestrator can find a Researcher or Writer by capability. The registry is an advisory index, never a broker.
+3. **Asynchronous task delegation.** A delegator submits a task and tracks it by `task_id` (and `conversation_id` across a workflow) until it reaches a terminal state, by polling today and webhooks later.
 
-| Aspect | Traditional client–server / tool-calling (e.g., MCP) | AgentMesh (proposed) |
-| --- | --- | --- |
-| Relationship | An *application* calls *tools* owned by it | Independent *agents* delegate tasks to peer agents |
-| Discovery | Tools are enumerated by the host application | Agents publish manifests; discovery via manifests and registries |
-| Coupling | Integrations are application-centric and bespoke | A standard protocol carries delegation, context, results, and errors |
-| Communication | Predominantly synchronous tool invocation | Asynchronous task lifecycle: submission, acceptance, execution, completion, failure, retries |
-| State | Session state lives in the host application | Task state and conversation correlation are explicit protocol concepts (with Redis as the planned transient-state backing) |
-
-The comparison above is a framing, not a criticism of any specific standard: MCP is designed for application↔tool integration, while AgentMesh is proposed for agent↔agent coordination, and both can coexist in the same system.
-
-## Core architectural pillars
-
-1. **Unified JSON payload schema.** Tasks, conversations, results, errors, and usage metadata share one proposed schema so that agents can be mixed and matched.
-2. **Agent discovery through manifests and registries.** Each agent exposes a `/manifest` endpoint describing its identity and capabilities; a registry indexes those manifests so an Orchestrator can find agents such as a Researcher or Writer by capability.
-3. **Asynchronous task delegation and communication.** A delegator submits a task and tracks it via task IDs and conversation IDs, receiving progress and results through rest APIs plus webhooks or polling.
-
-## Proposed architecture
+### Architecture
 
 ```mermaid
 flowchart TD
@@ -103,15 +162,12 @@ flowchart TD
     O -->|delegate writing task| Writer[Writer agent]
     Researcher -->|task results / progress| O
     Writer -->|task results / progress| O
-    O -->|transient task state and conversation correlation| Redis[(Redis)]
-    Researcher -.->|transient task state| Redis
-    Writer -.->|transient task state| Redis
     O -->|final report| User
 ```
 
-## Example flow: delegated research → report
+### Example flow: delegated research → report
 
-The following sequence diagram illustrates the *intended* interaction pattern (not an implemented flow):
+This is the flow `agentmesh demo` runs:
 
 ```mermaid
 sequenceDiagram
@@ -121,122 +177,105 @@ sequenceDiagram
     participant Re as Researcher
     participant W as Writer
 
-    User->>O: Request report on a topic
-    O->>R: Look up agents with "research" capability
-    R-->>O: Returns Researcher manifest v0.1.0
-    O->>Re: Delegate research task (task ID + conversation ID + payload)
-    Re-->>O: Return structured research results
-    O->>W: Delegate report writing task (with research results)
-    W-->>O: Return generated report summary
-    O-->>User: Return task result (report)
+    User->>O: POST /tasks (capability "report")
+    O->>R: GET /agents?capability=research
+    R-->>O: Researcher manifest
+    O->>Re: POST /tasks (research, same conversation_id)
+    O->>Re: GET /tasks/{task_id} until completed
+    Re-->>O: findings
+    O->>R: GET /agents?capability=document-writing
+    O->>W: POST /tasks (findings)
+    W-->>O: Markdown report
+    O-->>User: completed task with report and trace
 ```
 
-## Planned technology stack
+### Task lifecycle
 
-This is the *preferred initial implementation direction*, subject to confirmation:
-
-- **Python + FastAPI** — initial preferred implementation language and web framework for the reference agent API.
-- **Redis** — intended for transient task state and conversation correlation.
-- **LiteLLM or Ollama** — for LLM execution (model-agnostic runtime, not part of the protocol contract).
-- **REST APIs with webhooks or polling** — the transport layer for task delegation, progress, and results.
-
-## Proposed repository structure
-
-```text
-agentmesh/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── CODE_OF_CONDUCT.md
-├── SECURITY.md
-├── .gitignore
-├── .editorconfig
-├── .env.example
-├── CHANGELOG.md
-├── pyproject.toml
-├── requirements-dev.txt
-├── .github/
-│   ├── workflows/
-│   │   ├── tests.yml
-│   │   └── release.yml
-│   ├── ISSUE_TEMPLATE/
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── dependabot.yml
-├── src/
-│   └── agentmesh/
-│       ├── __init__.py
-│       ├── validation.py
-│       └── cli.py
-├── docs/
-│   ├── architecture.md
-│   ├── protocol-overview.md
-│   ├── agent-discovery.md
-│   ├── task-lifecycle.md
-│   └── roadmap.md
-├── specs/
-│   ├── README.md
-│   ├── manifest.schema.json
-│   └── task.schema.json
-├── examples/
-│   ├── README.md
-│   └── payloads/
-│       ├── researcher.manifest.json
-│       ├── writer.manifest.json
-│       └── *.task.*.json
-├── agents/
-│   └── README.md
-├── tests/
-│   ├── README.md
-│   ├── test_schemas.py
-│   └── test_package.py
-└── scripts/
-    └── README.md
+```mermaid
+stateDiagram-v2
+    [*] --> submitted
+    submitted --> accepted
+    submitted --> rejected
+    accepted --> executing
+    accepted --> timed_out
+    executing --> executing : retry
+    executing --> completed
+    executing --> failed
+    executing --> timed_out
 ```
 
-## Current status
+Details: [docs/task-lifecycle.md](docs/task-lifecycle.md) · [docs/protocol-overview.md](docs/protocol-overview.md) · [docs/agent-discovery.md](docs/agent-discovery.md) · [docs/architecture.md](docs/architecture.md) · [docs/http-api.md](docs/http-api.md)
 
-- ✅ Repository scaffolding and architecture documentation.
-- ✅ Draft JSON Schemas for agent manifests and task payloads ([`specs/`](specs/README.md)).
-- ✅ Conditional rules in the task schema (`completed` ⇒ `result`; `rejected`/`failed`/`timed_out` ⇒ `error`).
-- ✅ `agentmesh` Python package with a validation API and CLI, example payloads, and tests on Python 3.10–3.13 in CI.
-- 🚧 Reference agents, registry, and Redis-backed task tracking: **proposed, not implemented**.
+## Vision and design principles
+
+- **Model-agnostic:** the protocol does not depend on any particular LLM provider or model.
+- **Language-agnostic:** the protocol is JSON over HTTP, so any language can participate; the Python package is a reference, not part of the contract.
+- **Composable:** multi-agent workflows (e.g., an Orchestrator chaining specialist agents) are expressed with the protocol itself.
+- **Asynchronous by default:** real agent work is long-running, so the protocol is built around task delegation, deadlines and eventual results rather than blocking calls.
+- **Explicit over silent:** agents reject what they cannot honor and report failures as structured errors.
+- **Honest scoping:** the docs describe what is proposed and what is implemented, and do not claim security or production readiness that has not been built and reviewed.
+
+## How AgentMesh differs from MCP and client–server tool architectures
+
+| Aspect | Traditional client–server / tool-calling (e.g., MCP) | AgentMesh |
+| --- | --- | --- |
+| Relationship | An *application* calls *tools* owned by it | Independent *agents* delegate tasks to peer agents |
+| Discovery | Tools are enumerated by the host application | Agents publish manifests; discovery via manifests and registries |
+| Coupling | Integrations are application-centric and bespoke | A standard protocol carries delegation, context, results and errors |
+| Communication | Predominantly synchronous tool invocation | Asynchronous task lifecycle: submission, acceptance, execution, completion, failure, retries, timeouts |
+| State | Session state lives in the host application | Task state and conversation correlation are explicit protocol concepts |
+
+This is a framing, not a criticism of any specific standard: MCP is designed for application↔tool integration, while AgentMesh targets agent↔agent coordination, and both can coexist in the same system — an AgentMesh agent can use MCP tools internally.
+
+## Project status
+
+- ✅ Draft JSON Schemas for agent manifests and task payloads ([`specs/`](specs/README.md)), with conditional rules (`completed` ⇒ `result`; `rejected`/`failed`/`timed_out` ⇒ `error`).
+- ✅ Validation API and CLI.
+- ✅ Task lifecycle state machine.
+- ✅ Reference agent server, registry and clients over HTTP, with deadlines, retries, idempotency and explicit rejection.
+- ✅ Three-agent demo (Orchestrator, Researcher, Writer) in one process, as separate processes and in Docker Compose.
+- ✅ Tests on Python 3.10–3.13, package build and Docker checks in CI.
+- 🚧 LLM-backed reference agents, Redis-backed task state, webhooks: **planned**.
+- 🚧 Authentication, authorization, TLS and observability: **planned (Phase 5)**.
 
 ## Roadmap
 
-The high-level plan; details in [docs/roadmap.md](docs/roadmap.md):
+Details in [docs/roadmap.md](docs/roadmap.md):
 
-- **Phase 0** — Repository scaffolding and architecture documentation. *(in progress)*
-- **Phase 1** — Protocol specification and JSON schema.
-- **Phase 2** — Minimal agent API and manifest discovery.
-- **Phase 3** — Three-agent MVP: Orchestrator, Researcher, Writer.
-- **Phase 4** — Redis-backed task tracking and asynchronous communication.
-- **Phase 5** — Authentication, authorization, observability, testing, and security hardening.
+- **Phase 0** — Repository scaffolding and architecture documentation. *(done)*
+- **Phase 1** — Protocol specification and JSON schema. *(in progress: drafts published, open questions remain)*
+- **Phase 2** — Minimal agent API and manifest discovery. *(reference implementation done)*
+- **Phase 3** — Three-agent MVP: Orchestrator, Researcher, Writer. *(offline demo done; LLM-backed agents next)*
+- **Phase 4** — Redis-backed task tracking and asynchronous communication. *(polling and timeouts done; Redis and webhooks next)*
+- **Phase 5** — Authentication, authorization, observability, testing and security hardening.
 - **Phase 6** — Multi-agent interoperability and external developer adoption.
 
-## Future work
+Open specification questions — who assigns `task_id`, retry and idempotency semantics, the error-code taxonomy, capability matching and manifest versioning — are tracked in [docs/task-lifecycle.md](docs/task-lifecycle.md) and [docs/protocol-overview.md](docs/protocol-overview.md). The reference implementation's current answers are documented there too.
 
-The work still needed to turn the draft into a usable protocol:
+## Repository structure
 
-**Specification (Phase 1)**
-- [ ] Decide who assigns `task_id` (delegator or executor) and define idempotency rules.
-- [ ] Define retry semantics and a stable error-code taxonomy.
-- [x] Encode conditional rules in the schemas (`completed` ⇒ `result`, `failed` ⇒ `error`).
-- [ ] Settle capability matching and manifest versioning.
+```text
+Agentmesh/
+├── src/agentmesh/
+│   ├── validation.py       # schema loading and payload validation
+│   ├── lifecycle.py        # task states, transitions, payload helpers
+│   ├── agent.py            # reference agent server
+│   ├── registry.py         # reference registry
+│   ├── client.py           # AgentClient, RegistryClient
+│   ├── demo.py             # Orchestrator, Researcher, Writer demo agents
+│   ├── cli.py              # the agentmesh command
+│   └── _http.py            # stdlib JSON-over-HTTP plumbing
+├── specs/                  # draft JSON Schemas (bundled into the package)
+├── docs/                   # protocol, architecture, discovery, lifecycle, HTTP API, roadmap
+├── examples/               # custom_agent.py and example payloads
+├── tests/                  # pytest suite
+├── scripts/                # demo-cluster.sh
+├── agents/                 # reserved for production-oriented reference agents
+├── Dockerfile, docker-compose.yml
+└── .github/                # CI, release workflow, issue and PR templates
+```
 
-**Reference implementation (Phases 2–4)**
-- [ ] Minimal FastAPI agent exposing `/manifest` and a task endpoint.
-- [ ] Registry service that indexes manifests and answers capability queries.
-- [ ] Orchestrator, Researcher and Writer agents with an end-to-end demo.
-- [ ] Redis-backed task state, webhooks/polling, and timeout handling.
-
-**Hardening and adoption (Phases 5–6)**
-- [ ] Agent-to-agent authentication and authorization.
-- [ ] Structured logging, tracing, and usage reporting.
-- [ ] Integration tests for the reference agents and a security review.
-- [ ] Interoperability tests with agents in other languages, plus quickstarts and versioned spec releases.
-- [ ] Publish the package to PyPI (the release workflow is ready; see [Releasing](#releasing)).
-
-## Contributing and development setup
+## Development
 
 ```bash
 git clone https://github.com/kirtanbhatt10/Agentmesh.git
@@ -247,14 +286,12 @@ pytest -v
 ruff check . && ruff format --check .
 ```
 
-Agent setup instructions will be added once the Python/FastAPI reference implementation lands in Phase 2.
-
-Contributions to the **specification and documentation are warmly welcomed now** — please read [CONTRIBUTING.md](CONTRIBUTING.md). Please also note our [Code of Conduct](CODE_OF_CONDUCT.md) and the process described in [SECURITY.md](SECURITY.md).
+Contributions to the specification, documentation and code are welcome — please read [CONTRIBUTING.md](CONTRIBUTING.md), our [Code of Conduct](CODE_OF_CONDUCT.md) and [SECURITY.md](SECURITY.md).
 
 ## Releasing
 
 1. Update the version in `pyproject.toml` and `src/agentmesh/__init__.py`, and move the "Unreleased" notes in [CHANGELOG.md](CHANGELOG.md) under the new version.
-2. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+2. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 3. The [release workflow](.github/workflows/release.yml) builds the package, publishes it to PyPI and creates a GitHub release.
 
 One-time setup before the first release: on [pypi.org](https://pypi.org/manage/account/publishing/), add a *pending trusted publisher* for repository `kirtanbhatt10/Agentmesh`, workflow `release.yml`, environment `pypi`. No API token is needed.

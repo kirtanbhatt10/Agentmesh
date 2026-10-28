@@ -4,16 +4,27 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentmesh"
-version = "0.1.0"
-description = "Reference schemas and validators for AgentMesh, an open protocol for peer-to-peer AI agent communication."
+version = "0.2.0"
+description = "AgentMesh: an open protocol for peer-to-peer AI agent communication, with schemas, validators and a dependency-light reference agent, registry and client."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Kirtan Bhatt", email = "kirtan11bhatt@gmail.com" }]
-keywords = ["agents", "ai", "a2a", "protocol", "json-schema", "multi-agent"]
+keywords = [
+  "agents",
+  "ai",
+  "a2a",
+  "agent-to-agent",
+  "protocol",
+  "json-schema",
+  "multi-agent",
+  "orchestration",
+  "registry",
+]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
@@ -22,6 +33,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
@@ -38,6 +51,7 @@ Homepage = "https://github.com/kirtanbhatt10/Agentmesh"
 Repository = "https://github.com/kirtanbhatt10/Agentmesh"
 Issues = "https://github.com/kirtanbhatt10/Agentmesh/issues"
 Changelog = "https://github.com/kirtanbhatt10/Agentmesh/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/kirtanbhatt10/Agentmesh/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentmesh"]
@@ -47,7 +61,17 @@ packages = ["src/agentmesh"]
 "specs/task.schema.json" = "agentmesh/schemas/task.schema.json"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "specs/", "tests/", "examples/", "README.md", "LICENSE", "CHANGELOG.md"]
+include = [
+  "src/",
+  "specs/",
+  "tests/",
+  "examples/",
+  "docs/",
+  "scripts/",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

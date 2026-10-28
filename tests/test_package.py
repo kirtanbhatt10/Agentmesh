@@ -21,7 +21,7 @@ def _schema_for(path: Path) -> str:
 
 
 def test_version_is_exposed():
-    assert agentmesh.__version__ == "0.1.0"
+    assert agentmesh.__version__ == "0.2.0"
 
 
 @pytest.mark.parametrize("name", ["manifest", "task"])

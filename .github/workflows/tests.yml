@@ -22,6 +22,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +36,10 @@ jobs:
       - run: pytest -v
       - run: agentmesh validate manifest examples/payloads/*.manifest.json
       - run: agentmesh validate task examples/payloads/*.task.*.json
+      - name: Three-agent demo (one process)
+        run: agentmesh demo
+      - name: Three-agent demo (separate processes)
+        run: bash scripts/demo-cluster.sh "task lifecycle and timeouts"
 
   build:
     runs-on: ubuntu-latest
@@ -54,3 +59,31 @@ jobs:
           /tmp/venv/bin/agentmesh --version
           /tmp/venv/bin/agentmesh schema task > /dev/null
           /tmp/venv/bin/agentmesh validate manifest "$GITHUB_WORKSPACE"/examples/payloads/researcher.manifest.json
+          /tmp/venv/bin/agentmesh demo --json > /tmp/demo.json
+          /tmp/venv/bin/agentmesh validate task /tmp/demo.json
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t agentmesh:local .
+      - name: Demo inside the image
+        run: docker run --rm agentmesh:local agentmesh demo
+      - name: Start registry and agents with Docker Compose
+        run: docker compose up --detach --wait
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - name: Delegate a report through the containers
+        run: |
+          agentmesh find http://127.0.0.1:8500
+          printf '%s' '{"task_id": "ci-report", "conversation_id": "ci", "capability": "report", "context": {"topic": "agent discovery"}}' > task.json
+          agentmesh submit http://127.0.0.1:8503 task.json --wait --timeout 60
+      - name: Container logs
+        if: always()
+        run: docker compose logs
+      - name: Stop containers
+        if: always()
+        run: docker compose down
