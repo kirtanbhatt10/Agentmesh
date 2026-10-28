@@ -1,7 +1,9 @@
 # scripts/
 
-This directory will contain **developer and maintenance scripts** for the AgentMesh repository — for example, environment bootstrap, lint/format runners, or demo launchers once implementations exist.
+Developer and demo scripts for the AgentMesh repository.
 
-> ⚠️ **Status:** There are no scripts yet. AgentMesh is in early design ([Phase 0](../docs/roadmap.md)); setup and build tooling will be added alongside the first implementation (planned Phase 2).
+| Script | What it does |
+| --- | --- |
+| [`demo-cluster.sh`](demo-cluster.sh) | Starts a registry and the demo Orchestrator, Researcher and Writer as **four separate processes** on ports 8500–8503 (override with `AGENTMESH_PORT`), submits one report task through the CLI, prints the result and shuts everything down. Usage: `bash scripts/demo-cluster.sh ["topic"]`. Requires `pip install -e .`. |
 
-Conventions (proposal): scripts stay small, documented by a header comment, and avoid hard-coded machine-specific paths or credentials. Anything needed to run the project locally will also be documented in the main [README](../README.md).
+Conventions: scripts stay small, are documented by a header comment, and avoid hard-coded machine-specific paths or credentials. Anything needed to run the project locally is also documented in the main [README](../README.md).
