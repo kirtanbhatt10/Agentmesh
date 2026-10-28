@@ -2,7 +2,7 @@
 
 This directory contains the **AgentMesh protocol specification**: formal, versioned documents and machine-readable JSON Schemas describing agent manifests and task payloads.
 
-> ⚠️ **Status:** The schemas below are **Phase 1 drafts** for design discussion ([roadmap](../docs/roadmap.md)). They are proposed, not finalized. The `agentmesh` Python package bundles them and validates payloads against them (`agentmesh validate ...`). The conceptual groundwork lives in [docs/protocol-overview.md](../docs/protocol-overview.md).
+> ⚠️ **Status:** The schemas below are **Phase 1 drafts** for design discussion ([roadmap](../docs/roadmap.md)). They are proposed, not finalized. The `agentmesh` Python package bundles them, validates payloads against them (`agentmesh validate ...`) and uses them in its reference agent, registry and client. The conceptual groundwork lives in [docs/protocol-overview.md](../docs/protocol-overview.md); the reference HTTP binding is described in [docs/http-api.md](../docs/http-api.md).
 
 ## Current contents (drafts)
 
